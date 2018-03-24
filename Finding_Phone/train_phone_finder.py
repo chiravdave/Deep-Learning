@@ -9,13 +9,10 @@ import sys
 from preprocess import normalized_image
 totaltime=0
 
-#file containing the path to images and labels
-
+#Reading file path containing images and labels
 filepath = str(sys.argv[1]) + "/"
-print filepath
-
 filename = 'labels.txt'
-#lists where to store the paths and labels
+
 is_training = tf.placeholder(tf.int8,[],name = 'flag')
 epsilon = 1e-3
 
@@ -127,26 +124,20 @@ decodedIm = tf.image.decode_jpeg(rawIm)
 lbl=[]
 #extracting the labels queue
 label_queue = filename_queue[1]
-#print (label_queue)
 #Initializing global and local variable initializers
 init_op = tf.group(tf.local_variables_initializer(), tf.global_variables_initializer())
 #Creating an interactive session to run in python file
 label_value = []
 sess = tf.InteractiveSession()
 sess.run(init_op)
-Tolerance = 0
 no_epoch=0
 loss_to_be_minimized = 0
 label_counter = 0
 train_step = tf.train.GradientDescentOptimizer(1e-8).minimize(loss)
-Train_Checker = []
 saver = tf.train.Saver()
 with sess.as_default():
     # start populating the filename queue
     # saver = tf.train.Saver()
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(coord=coord)
-    writer = tf.summary.FileWriter('./graphs', sess.graph)
     flag = 0  # epoch
     lbl_array = []
     img_array = []
@@ -184,8 +175,7 @@ with sess.as_default():
         totaltime = totaltime + (endtime - begtime)
         no_epoch = no_epoch + 1
 
-        print ("Epoch: " + str(flag) + "\t" + "Total Error: " + str(loss_to_be_minimized) + "\t" + "Tolerance: " + str(
-            Tolerance) + "\t" + "Time Taken: " + str(endtime - begtime))
+        print ("Epoch: " + str(flag) + "\t" + "Total Error: " + str(loss_to_be_minimized) + "\t" + "Tolerance: " + "\t" + "Time Taken: " + str(endtime - begtime))
         plt.ion()
         y = loss_to_be_minimized
         plt.xlabel("Epochs")
@@ -193,20 +183,11 @@ with sess.as_default():
         plt.title("Loss Vs Epochs")
         plt.scatter(flag, y)
         plt.pause(0.05)
-        Train_Checker.append(loss_to_be_minimized)  # Updated Loss function
-
-
         if (no_epoch == 60 or loss_to_be_minimized < 800):
             break
-        if (Train_Checker[0] <= Train_Checker[1] and flag > 1):
-            Tolerance = Tolerance + 1
-            if (Tolerance > 30):
-                break
-        del Train_Checker[:]
     save_path = saver.save(sess, "./model")
     print ("Model saved in path: %s" % save_path)
     coord.request_stop()
     coord.join(threads)
     writer.close()
-
 print("TotalTime Taken: " + str(totaltime))
