@@ -50,7 +50,7 @@ def train_network(images_dir):
     #Getting predictions from the network
     predictions = my_network(input_layer, mode)
     #Calulating loss function
-    loss = tf.losses.mean_squared_error(labels, predictions)
+    loss = tf.losses.mean_squared_error(actual_labels, predictions)
     #Optimize the weigths and decrease the loss incurred
     optimizer = tf.train.AdamOptimizer()
     model = optimizer.minimize(loss)
