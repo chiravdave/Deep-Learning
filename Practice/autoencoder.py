@@ -14,7 +14,7 @@ def fc_layer(prev, input_size, output_size):
   bias = bias_initialize(output_size)
   return tf.nn.sigmoid(tf.matmul(prev, weight) + bias)
 
-def autoEncoder(x):
+def auto_encoder(x):
   #Flatten input images
   flatten = tf.reshape(x, shape=[-1, 784])
   #Hidden layer 1 in the encoder
@@ -41,7 +41,7 @@ def main():
   #Create placeholders for the model
   x_input = tf.placeholder(tf.float32, shape=[None, 28, 28])
   #Build model
-  prediction, loss = autoEncoder(x_input)
+  prediction, loss = auto_encoder(x_input)
   #Minimize loss using an optimizer
   optimizer = tf.train.GradientDescentOptimizer(1e-3).minimize(loss)
   with tf.Session() as sess:
