@@ -14,7 +14,7 @@ The problem is to create a visual object detection system for a customer to find
 the floor using a single RGB camera image. The customer has only one type of phone he is interested in detecting. Here is
 an example of a image with a phone on it:
 
-![ScreenShot](https://raw.github.com/{chiravdave}/{repository}/{branch}/{path})
+![Phone](./0.jpg)
 
 # Instructions to run the code
 Step 1. Install python3 if you don't have it. (https://realpython.com/installing-python/)
