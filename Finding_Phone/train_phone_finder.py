@@ -1,4 +1,4 @@
-from preprocess import generateData
+from preprocess import generate_data
 from sklearn.model_selection import train_test_split
 import sys
 import tensorflow as tf
@@ -51,7 +51,7 @@ def train_network(images_dir):
     #Mode for dropout layer
     mode = tf.placeholder(shape=(), dtype=tf.bool)
     #Getting normalized features and labels
-    features, labels = generateData(images_dir, image_width, image_height, channels)
+    features, labels = generate_data(images_dir, image_width, image_height, channels)
     x_train, x_test, y_train, y_test = train_test_split(features, labels, test_size=0.3)
     #Getting predictions from the network
     predictions = my_network(input_layer, mode)
