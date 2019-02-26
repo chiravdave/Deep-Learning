@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from preprocess import normalizeImage
+from preprocess import normalize_image
 import cv2
 import sys
 
@@ -18,7 +18,7 @@ def test_network(image_path):
     bgr_image = cv2.imread(image_path)
     b, g, r = cv2.split(bgr_image)      #get b,g,r values of the image
     rgb_image = cv2.merge([r,g,b])      #convert into r,g,b format
-    normalized_image = normalizeImage(rgb_image)
+    normalized_image = normalize_image(rgb_image)
     reshaped_normalized_image = np.reshape(normalized_image, (-1, 326, 490, 3))
     #storing my results
     feed_dict = {x:reshaped_normalized_image, mode:False}
