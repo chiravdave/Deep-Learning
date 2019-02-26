@@ -4,7 +4,7 @@
 1. [Problem](README.md#problem)
 1. [Instructions to run the code](README.md#instructions-to-run-the-code)
 
-#Introduction
+# Introduction
 Architected a Convolutional Neural Network to localize a phone in an image with a minimal amount of data to train on (training images = 130) Below are the design details:
 
 * Epochs : 165
@@ -27,6 +27,6 @@ an example of a image with a phone on it: <p align="center"> <img src="0.jpg"> <
 # Instructions to run the code
 Step 1. Install all the necessary packages
 
-Step 2. Run the training script named train_phone_finder.py with image direcory passed as an argument.
+Step 2. Run the training script named <b>train_phone_finder.py</b> with image direcory passed as an argument.
 
-Step 3. Once training is done run the testing script named find_phone.py with the image file that you want to test as an argument. 
+Step 3. Once training is done run the testing script named <b>find_phone.py</b> with the image file that you want to test as an argument. 
