@@ -1,4 +1,4 @@
 # Deep-Learning
 
-* Object Localisation
+* Object Localization
 * Unsupervised Learning
