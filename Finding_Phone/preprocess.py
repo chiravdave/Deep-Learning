@@ -20,7 +20,7 @@ def generate_data(images_dir, image_width, image_height, channels):
         bgr_image = cv2.imread(image)
         b, g, r = cv2.split(bgr_image) #get b,g,r values of the image
         rgb_image = cv2.merge([r,g,b]) #convert into r,g,b format
-        normalized_image = normalizeImage(rgb_image) 
+        normalized_image = normalize_image(rgb_image) 
         features[i] = normalized_image
         i = i + 1
     labels_numpy_array = np.array(labels, dtype = np.float32) #Converting labels list into numpy array
