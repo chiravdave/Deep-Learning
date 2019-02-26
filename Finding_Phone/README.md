@@ -1,12 +1,22 @@
 # Table of Contents
+1. [Introduction](README.md#introduction)
 1. [Dependencies](README.md#dependencies)
 1. [Problem](README.md#problem)
 1. [Instructions to run the code](README.md#instructions-to-run-the-code)
+
+#Introduction
+Architected a Convolutional Neural Network to localize a phone in an image with a minimal amount of data to train on (training images = 130) Below are the design details:
+
+* Epochs : 165
+* Training Mode : Batch
+* Hidden Layers : 2
+* Learning Rate : 0.0001
 
 # Dependencies
 * python3
 * numpy
 * cv2
+* sklearn
 * tensorflow for GPU
 
 # Problem
@@ -15,9 +25,8 @@ the floor using a single RGB camera image. The customer has only one type of pho
 an example of a image with a phone on it: <p align="center"> <img src="0.jpg"> </p>
 
 # Instructions to run the code
-Step 1. Install python3 if you don't have it. (https://realpython.com/installing-python/)
+Step 1. Install all the necessary packages
 
-Step 2. Install argparse module if you don't have it. Run this command **pip3 install argparse** for installing it.
+Step 2. Run the training script named train_phone_finder.py with image direcory passed as an argument.
 
-Step 3. Open the bash file **run.sh**, uncomment the last line and change python to python3. Once done, it should look like:
-python3 ./src/pharmacy_counting.py ./input/itcont.txt ./output/top_cost_drug.txt
+Step 3. Once training is done run the testing script named find_phone.py with the image file that you want to test as an argument. 
