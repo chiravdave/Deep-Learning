@@ -1,10 +1,10 @@
 import numpy as np
 import cv2
 
-def normalizeImage(image):
+def normalize_image(image):
     return ((image - image.min())/ (image.max() - image.min()))  #Normalizing Image
 
-def generateData(images_dir, image_width, image_height, channels):
+def generate_data(images_dir, image_width, image_height, channels):
     image_paths = []  # store absolute path of all the images
     labels = []       #Storing center co-ordinates of the phone in every image
     labels_file = images_dir+'/labels.txt'     #Path of the labels.txt file
