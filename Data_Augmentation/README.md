@@ -10,11 +10,8 @@ The recent success of deep learning in computer vision can be partially attribut
 * python3
 * numpy
 * cv2
-* matplotlib
 
 # Instructions to run the code
 Step 1. Install all the necessary package dependencies.
 
-Step 2. Once the project is downloaded, you just need to call the function <b>start_data_augmentation</b> with image directory and output image size dimensions(width, height) as arguments, i.e <b>start_data_augmentation('../documents', (448, 448))</b>. 
-
-Extra: You can also import and use individual functions from another module but before doing that just create a folder named <b>augmented_images</b> inside the parent directory.
+Step 2. Once the project is downloaded, you just need to call the function <b>start_data_augmentation</b> with image directory and output image dimensions as width and height (optional) as arguments, i.e <b>start_data_augmentation('../documents', 448, 448)</b>. 
