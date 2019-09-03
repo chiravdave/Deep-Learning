@@ -1,6 +1,7 @@
 # Deep-Learning
 
+* Detecting car parked at a parking spot
 * Data Augmentation
-* Image Classification
-* Object Localization
+* Localizing an iPhone
+* Scanned Document Detection
 * Unsupervised Learning
