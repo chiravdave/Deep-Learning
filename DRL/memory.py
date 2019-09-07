@@ -1,4 +1,4 @@
-class Memory:
+class ReplayBuffer:
 
 	def __init__(self):
 		self.buffer = []
