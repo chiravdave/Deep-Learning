@@ -97,11 +97,13 @@ def train(epochs):
 	with tf.name_scope('Discriminator_Loss'):
 		D_real_loss, D_fake_loss = cost(D_real_out, tf.ones_like(D_real_out)*0.9), cost(D_fake_out, tf.zeros_like(D_fake_out))
 		D_total_loss = D_real_loss + D_fake_loss
+	# For showing discriminator loss on tensorboard
 	tf.compat.v1.summary.scalar('Discriminator Loss', D_total_loss, family='loss')
 
 	# Loss function for the Generator:
 	with tf.name_scope('Generator_Loss'):
 		G_loss = cost(D_fake_out, tf.ones_like(D_fake_out))
+	# For showing generator loss on tensorboard
 	tf.compat.v1.summary.scalar('Generator Loss', G_loss, family='loss')
 
 	# Trainable parameters for Discriminator and Generator network
@@ -162,7 +164,7 @@ def train(epochs):
 			if epoch%500 == 0:
 				saver.save(sess, './model/gan_model', global_step=epoch)
 
-		# Visualizing graph on tensorboard
+		# For visualizing graph on tensorboard
 		writer.add_graph(sess.graph)
 
 if __name__ == '__main__':
