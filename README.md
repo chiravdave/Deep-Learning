@@ -5,3 +5,4 @@
 * Localizing an iPhone
 * Scanned Document Detection
 * Unsupervised Learning
+* Deep Reinforcement Learning

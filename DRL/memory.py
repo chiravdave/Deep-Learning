@@ -5,8 +5,8 @@ class ReplayBuffer:
 	def __init__(self):
 		self.buffer = []
 
-	def add_to_memory(self, cur_state, action, next_state, reward, end):
-		self.buffer.append((cur_state, action, next_state, reward, end))
+	def add_to_memory(self, cur_state, action, next_state, reward):
+		self.buffer.append((cur_state, action, next_state, reward))
 
 	def batch(self, batch_size):
 		batch_indexes = choice(len(self.buffer), size=batch_size, replace=False)

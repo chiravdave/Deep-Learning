@@ -20,6 +20,9 @@ def preprocess_frame(img):
 	crop[crop == 109] = 0
 	# Only ball and paddle should be visible
 	crop[crop != 0] = 255
-	# Flattening out the image
-	flatten = crop.astype(np.float).ravel().reshape(1, 6400) 
-	return flatten
+	# Converting into float type
+	crop = crop.astype(np.float)
+	# Normalizing the image
+	crop = crop / 255
+	crop = np.reshape(crop, (80, 80, 1)) 
+	return crop
