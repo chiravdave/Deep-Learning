@@ -2,13 +2,21 @@ import numpy as np
 import cv2
 
 def show_img(img):
+	"""
+	This function will help to visualize the input image.
+
+	:param img: input image
+	"""
+
 	cv2.imshow('img', img)
 	cv2.waitKey()
 	cv2.destroyWindow('img')
 
 def preprocess_frame(img):
 	"""
-	This function will preprocess the input frame for DQN
+	This function will preprocess the input image/frame for DQN.
+
+	:param img: input image/frame
 	"""
 
 	# We don't need scores

@@ -11,23 +11,75 @@ from tqdm import tqdm
 xavier_initializer = tf.glorot_normal_initializer()
 
 def weights_initialize(shape, var_name):
+	"""
+	This function will help to initialize our weights.
+
+	:param shape: shape/dimension of the weight matrix
+	:param var_name: name to be used in tensorflow graph for the weights
+	:rtype: weight matrix
+	"""
+
 	w = tf.Variable(xavier_initializer(shape=shape, dtype=tf.float32), name=var_name, shape=shape, dtype=tf.float32)
 	return w
 
 def bias_initialize(shape, var_name):
+	"""
+	This function will help to initialize our bias.
+
+	:param shape: shape/dimension of the bias
+	:param var_name: name to be used in tensorflow graph for the bias 
+	:rtype: bias
+	"""
+
 	b = tf.Variable(tf.zeros(shape=shape, dtype=tf.float32), name=var_name, shape=shape, dtype=tf.float32)
 	return b
 
-def conv2D(inputs, kernel, stride, pad, bias, conv_layer, act_layer):
-	conv = tf.compat.v1.nn.bias_add(tf.compat.v1.nn.conv2d(inputs, filter=kernel, strides=stride, padding=pad), bias, name=conv_layer)
+def conv2D(prev_layer, kernel, stride, pad, bias, conv_layer, act_layer):
+	"""
+	This function will help to initialize our convolutional layers.
+
+	:param prev_layer: previous layer
+	:param kernel: kernels for this layer
+	:param stride: stride for this layer
+	:param pad: padding for this layer
+	:param bias: bias for this layer
+	:param conv_layer: conv layer name to be used in tensorflow graph
+	:param act_layer: activation name to be used in tensorflow graph
+	:rtype: convolutional layer
+	"""
+
+	conv = tf.compat.v1.nn.bias_add(tf.compat.v1.nn.conv2d(prev_layer, filter=kernel, strides=stride, padding=pad), bias, name=conv_layer)
 	act = tf.compat.v1.nn.relu(conv, name=act_layer)
 	return act
 
-def pool2D(inputs, k_size, stride, pad, pool_layer):
-	pool = tf.compat.v1.nn.max_pool2d(inputs, k_size, stride, pad, name=pool_layer)
+def pool2D(prev_layer, k_size, stride, pad, pool_layer):
+	"""
+	This function will help to initialize our pooling layers.
+
+	:param prev_layer: previous layer
+	:param k_size: kernel size for this layer
+	:param stride: stride for this layer
+	:param pad: padding for this layer
+	:param pool_layer: pool layer name to be used in tensorflow graph
+	:rtype: pooling layer
+	"""
+
+	pool = tf.compat.v1.nn.max_pool2d(prev_layer, k_size, stride, pad, name=pool_layer)
 	return pool 
 
 def fc_layer(prev_layer, weights, bias, non_linearity, fc_layer, act_layer=None):
+	"""
+	This function will help to initialize our fully connected layers.
+
+	:param prev_layer: previous layer
+	:param weights: weights for this layer
+	:param bias: bias for this layer
+	:param non_linearity: activation function
+	:param fc_layer: fc layer name to be used in tensorflow graph
+	:param act_layer: activation name to be used in tensorflow graph
+	:rtype: fully connected layer
+	"""
+
 	out = tf.compat.v1.nn.bias_add(tf.matmul(prev_layer, weights), bias, name=fc_layer)
 	if non_linearity == 'relu':
 		act = tf.compat.v1.nn.relu(out, name=act_layer)
@@ -40,6 +92,10 @@ def fc_layer(prev_layer, weights, bias, non_linearity, fc_layer, act_layer=None)
 def update_target_network(sess, source_network, target_network):
 	"""
 	This function will update the target network.
+
+	:param sess: session object
+	:param source_network: source network object
+	:param target_network: target network object
 	"""
 
 	for key, tensor in source_network.tensors.items():
@@ -47,7 +103,10 @@ def update_target_network(sess, source_network, target_network):
 
 def skip_initial_frames(game):
 	"""
-	This function will skip some initial frames so that the ball and the opponent paddle comes in the view
+	This function will skip some initial frames so that the ball and the opponent paddle comes in the view.
+
+	:param game: pong game object
+	:rtype: processed frame which will be used as the starting frame to train our DQN
 	"""
 
 	game.reset()
@@ -59,7 +118,12 @@ def skip_initial_frames(game):
 
 def test_model(sess, X, current_q_values, game):
 	"""
-	This function will test our trained model
+	This function will test our trained model. It will create a video for one round (13 points) of the game.
+
+	:param sess: session object
+	:param X: input placeholder
+	:param current_q_values: variable responsible for getting the Q-values from the current network
+	:param game: pong game object
 	"""
 
 	# four character code object for video writer
@@ -72,6 +136,8 @@ def test_model(sess, X, current_q_values, game):
 	# Stacking 4 frames to capture motion
 	cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
 	cur_state = reshape(cur_state, (80, 80, 4))
+
+	# Game begins
 	while model_point < 13 and computer_point < 13:
 		q_values = sess.run(current_q_values, feed_dict = {X : reshape(cur_state, (1, 80, 80, 4))})
 		max_q_index = argmax(q_values)
@@ -158,9 +224,11 @@ def train(episodes, max_steps):
 	batch_size = 32
 	discount = 0.9
 
+	# Placeholder for input, output and rewards
 	X = tf.compat.v1.placeholder(shape=(None, 80, 80, 4), dtype=tf.float32)
 	Y = tf.compat.v1.placeholder(shape=(None, 2), dtype=tf.float32)
 	reward_history = tf.compat.v1.placeholder(shape=(), dtype=tf.int32)
+
 	# For showing rewards earned after every 10 episodes in tensorboard
 	tf.compat.v1.summary.scalar('Rewards', reward_history, family='Rewards')
 	# Initializing memory buffer
@@ -183,6 +251,8 @@ def train(episodes, max_steps):
 		# For visualizing graph on tensorboard
 		writer.add_graph(sess.graph)
 		game = Pong()
+
+		# Training begins
 		for episode in tqdm(range(1, episodes+1)):
 			step, rewards = 0, 0
 			# Skipping some initial frames so that the ball and the opponent paddle come in the view
@@ -217,7 +287,7 @@ def train(episodes, max_steps):
 				
 				step += 1
 
-			# Training begins with generation of labels
+			# Will train our current model after we generate labels using the target network
 			for i in range(iterations):
 				y = zeros((batch_size, 2))
 				x = zeros((batch_size, 80, 80, 4))
@@ -263,18 +333,6 @@ def train(episodes, max_steps):
 				writer.add_summary(summ, episode)
 
 		game.close()
-
-def sanity_checking():
-	game = Pong()
-	cur_frame = skip_initial_frames(game)
-	while True:
-		cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
-		next_frame, reward = game.play(choice([2, 3]))
-		prev_frame = cur_frame
-		cur_frame = preprocess_frame(next_frame)
-		ch = raw_input('Continue?')
-		if ch == 'n':
-			break
 
 if __name__ == '__main__':
 	train(5000, 10000)
