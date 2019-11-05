@@ -1,5 +1,6 @@
 # GAN
 This repository includes a tensorflow implementation of GAN on mnist dataset and it's been only trained for 1000 epochs. If you want your model to be really good then you should run it for more epochs.
+Model weights can be found at (https://drive.google.com/open?id=1w35rBPQPcR6aVK48G6fBRM24YEIRetFB)
 
 * Epochs : 1000
 * Learning rate: 0.0003
