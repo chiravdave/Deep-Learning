@@ -1,77 +1,130 @@
-"""
 import tensorflow as tf
-import gym
 import time
-from numpy.random import uniform, randint
+import cv2
+
+from pong import Pong
+from layers import weights_initialize, bias_initialize, conv2D, pool2D, fc_layer
+from numpy.random import uniform, choice
+from numpy import zeros, argmax, stack, append, reshape
 from memory import ReplayBuffer
-from preprocessing import preprocess_frame
+from preprocessing import preprocess_frame, show_img
+from tqdm import tqdm
 
-def weights_initialize(shape, var_name):
-	w = tf.compat.v1.Variable(var_name, shape, tf.float32, initializer = tf.contrib.layers.xavier_initializer())
-	return w
+def skip_initial_frames(game):
+	"""
+	This function will skip some initial frames so that the ball and the opponent paddle comes in the view.
 
-def bias_initialize(shape, var_name):
-	b = tf.compat.v1.Variable(var_name, shape, tf.float32, initializer = tf.zeros_initializer)
-	return b
+	:param game: pong game object
+	:rtype: processed frame which will be used as the starting frame to train our DQN
+	"""
 
-def copy_network_weights(source_network, target_network):
-	pass
+	game.reset()
+	next_frame = None
+	for i in range(20):
+		next_frame, reward = game.play(0)
 
-class PolicyNetwork:
+	return preprocess_frame(next_frame)
+
+def test_model(sess, X, current_q_values, game):
+	"""
+	This function will test our trained model. It will create a video for one round (13 points) of the game.
+
+	:param sess: session object
+	:param X: input placeholder
+	:param current_q_values: variable responsible for getting the Q-values from the current network
+	:param game: pong game object
+	"""
+
+	# four character code object for video writer
+	ex = cv2.VideoWriter_fourcc('M','J','P','G')
+	# video writer object
+	out = cv2.VideoWriter("./test/test_{}.avi".format(time.ctime()), ex, 5.0, (160, 210))
+	
+	model_point, computer_point = 0, 0
+	cur_frame = skip_initial_frames(game)
+	# Stacking 4 frames to capture motion
+	cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+	cur_state = reshape(cur_state, (80, 80, 4))
+
+	# Game begins
+	while model_point < 13 and computer_point < 13:
+		q_values = sess.run(current_q_values, feed_dict = {X : reshape(cur_state, (1, 80, 80, 4))})
+		max_q_index = argmax(q_values)
+		action = 2 if max_q_index == 0 else 3
+		next_frame, reward = game.play(action)
+		# write frame to video writer
+		out.write(next_frame)
+		if reward == 1 or reward == -1:
+			if reward == -1:
+				computer_point += 1
+			else:
+				model_point += 1
+			cur_frame = skip_initial_frames(game)
+			cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+			cur_state = reshape(cur_state, (80, 80, 4))
+		else:
+			cur_state = append(preprocess_frame(next_frame), cur_state[:, :, 0:3], axis=2)
+
+	out.release()
+
+class PGAgent:
 
 	def __init__(self, network_name):
-		with tf.variable_scope(network_name):
-			self.w1, self.b1 = weight_initializer([1600, 512], 'w1'), bias_initializer([512], 'b1')
-			self.w2, self.b2 = weight_initializer([512, 1], 'w2'), bias_initializer([1], 'b2')
+		with tf.compat.v1.variable_scope(network_name):
+			# Filters for first layer of convolution 
+			self.w1, self.b1 = weights_initialize([3, 3, 4, 32], 'w1'), bias_initialize([32], 'b1')
+			# Filters for second layer of convolution 
+			self.w2, self.b2 = weights_initialize([3, 3, 32, 64], 'w2'), bias_initialize([64], 'b2')
+			# Weights & Bias for the first FC layer
+			self.w3, self.b3 = weights_initialize([6400, 512], 'w3'), bias_initialize([512], 'b3')
+			# Weights & Bias for the final FC layer / Policy layer
+			self.w4, self.b4 = weights_initialize([512, 1], 'w4'), bias_initialize([1], 'b4')
 
 	def forward(self, X, network_name):
-		with tf.variable_scope(network_name):
-			h1 = tf.matmul(X, self.w1, name='h1') + self.b1
-			a1 = tf.nn.relu(h1, name='a1')
-			h2 = tf.matmul(a1, self.w2, name='h2') + self.b2
-			policy = tf.nn.sigmoid(h2, name='policy')
+		with tf.compat.v1.variable_scope(network_name):
+			# First layer of convolution
+			conv1 = conv2D(X, self.w1, 2, 'SAME', self.b1, 'conv1', 'act_1')
+			# Second layer of convolution
+			conv2 = conv2D(conv1, self.w2, 2, 'SAME', self.b2, 'conv2', 'act_2')
+			pool2 = pool2D(conv2, 2, 2, 'SAME', 'pool_2')
+			# Flattening out the previous layer
+			flatten = tf.reshape(pool2, [-1, 6400])
+			# First FC layer
+			fc1 = fc_layer(flatten, self.w3, self.b3, 'relu', 'fc1', 'act_3')
+			# Policy layer with Action values
+			policy = fc_layer(fc1, self.w4, self.b4, 'sigmoid', 'policy')
 			return policy
 
-class Pong:
+def train(episodes, max_steps):
+	# It is safe to clear the computation graph because there still could be variables present from the previous run  
+	tf.compat.v1.reset_default_graph()
+	# Creating summary object
+	writer = tf.compat.v1.summary.FileWriter('./graph/')
 
-	def __init__(self):
-		self.env = gym.make('Pong-v0')
-		self.action_mapping = {'up': 2, 'down': 3, 'stay': 0}
-
-	def reset(self):
-		return self.env.reset()
-
-	def show(self):
-		self.env.render()
-
-	def close(self):
-		self.env.close()
-		self.env = None
-
-	def play(self, action):
-		next_state, reward, is_done, _ = self.env.step(action)
-		return next_state, reward, is_done
-
-	def get_action_mapping(self):
-		return self.action_mapping
-
-def train(episodes, max_game_points):
-	episode = 1
-	replay = ReplayBuffer()
-	epsilon = 1
-	learn_rate = 0.001
-	epsilon_decay = 0.99
+	# Hyper-parameters
+	learning = 0.0001
+	iterations = 100
+	batch_size = 32
 	discount = 0.9
 
-	X = tf.placeholder(shape=(None, 1600), dtype=tf.float32)
-	Y = tf.placeholder(shape=(None, 1), dtype=tf.float32)
+	# Placeholder for input, output and rewards
+	X = tf.compat.v1.placeholder(shape=(None, 80, 80, 4), dtype=tf.float32)
+	Y = tf.compat.v1.placeholder(shape=(None, 1), dtype=tf.float32)
+	reward_history = tf.compat.v1.placeholder(shape=(), dtype=tf.int32)
 
-	cur_model, target_model = PolicyNetwork('cur_model'), PolicyNetwork('target_model')
-	cur_policy, target_policy = cur_model.forward(X, 'cur_model'), target_model.forward(X, 'target_model')
-	with tf.name_scope('cur_model'):
-		loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=cur_policy, labels=Y, name='loss')
-		optimizer = tf.train.AdamOptimizer(learning_rate=learn_rate, name='adam')
-		model = optimizer.minimize(loss)
+	# For showing rewards earned after every 10 episodes in tensorboard
+	tf.compat.v1.summary.scalar('Rewards', reward_history, family='Rewards')
+	# Initializing memory buffer
+	replay = ReplayBuffer()
+
+	# Initializing policy gradient model
+	policy_network = PGAgent('Policy_Network')
+	policy = policy_network.forward(X, 'Policy_Network')
+	# Loss function and optimizer initialization
+	loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=policy, labels=Y, name='loss')
+	optimizer = tf.train.AdamOptimizer(learning_rate=learning, name='adam')
+	minimize_loss = optimizer.minimize(loss)
+	summary = tf.compat.v1.summary.merge_all()
 
 	with tf.compat.v1.Session() as sess:
 		# First we have to initialize all the variables present in our computational graph

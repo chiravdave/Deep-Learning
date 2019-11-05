@@ -5,17 +5,14 @@ class ReplayBuffer:
 	def __init__(self):
 		self.buffer = []
 
-	def add_to_memory(self, cur_state, action, next_state, reward):
+	def add_to_memory(self, save_state):
 		"""
 		This method will save the given transition into the memory buffer.
 
-		:param cur_state: current game state
-		:param action: action performed in the current game state
-		:param next_state: next game state
-		:param reward: reward earned after performing the action
+		:param save_state: tuple of values needed for training the network
 		"""
 
-		self.buffer.append((cur_state, action, next_state, reward))
+		self.buffer.append(save_state)
 
 	def batch(self, batch_size):
 		"""

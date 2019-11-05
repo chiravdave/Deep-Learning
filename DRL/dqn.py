@@ -1,93 +1,14 @@
 import tensorflow as tf
-import gym
 import time
 import cv2
+
+from pong import Pong
+from layers import weights_initialize, bias_initialize, conv2D, pool2D, fc_layer
 from numpy.random import uniform, choice
 from numpy import zeros, argmax, stack, append, reshape
 from memory import ReplayBuffer
 from preprocessing import preprocess_frame, show_img
 from tqdm import tqdm
-
-xavier_initializer = tf.glorot_normal_initializer()
-
-def weights_initialize(shape, var_name):
-	"""
-	This function will help to initialize our weights.
-
-	:param shape: shape/dimension of the weight matrix
-	:param var_name: name to be used in tensorflow graph for the weights
-	:rtype: weight matrix
-	"""
-
-	w = tf.Variable(xavier_initializer(shape=shape, dtype=tf.float32), name=var_name, shape=shape, dtype=tf.float32)
-	return w
-
-def bias_initialize(shape, var_name):
-	"""
-	This function will help to initialize our bias.
-
-	:param shape: shape/dimension of the bias
-	:param var_name: name to be used in tensorflow graph for the bias 
-	:rtype: bias
-	"""
-
-	b = tf.Variable(tf.zeros(shape=shape, dtype=tf.float32), name=var_name, shape=shape, dtype=tf.float32)
-	return b
-
-def conv2D(prev_layer, kernel, stride, pad, bias, conv_layer, act_layer):
-	"""
-	This function will help to initialize our convolutional layers.
-
-	:param prev_layer: previous layer
-	:param kernel: kernels for this layer
-	:param stride: stride for this layer
-	:param pad: padding for this layer
-	:param bias: bias for this layer
-	:param conv_layer: conv layer name to be used in tensorflow graph
-	:param act_layer: activation name to be used in tensorflow graph
-	:rtype: convolutional layer
-	"""
-
-	conv = tf.compat.v1.nn.bias_add(tf.compat.v1.nn.conv2d(prev_layer, filter=kernel, strides=stride, padding=pad), bias, name=conv_layer)
-	act = tf.compat.v1.nn.relu(conv, name=act_layer)
-	return act
-
-def pool2D(prev_layer, k_size, stride, pad, pool_layer):
-	"""
-	This function will help to initialize our pooling layers.
-
-	:param prev_layer: previous layer
-	:param k_size: kernel size for this layer
-	:param stride: stride for this layer
-	:param pad: padding for this layer
-	:param pool_layer: pool layer name to be used in tensorflow graph
-	:rtype: pooling layer
-	"""
-
-	pool = tf.compat.v1.nn.max_pool2d(prev_layer, k_size, stride, pad, name=pool_layer)
-	return pool 
-
-def fc_layer(prev_layer, weights, bias, non_linearity, fc_layer, act_layer=None):
-	"""
-	This function will help to initialize our fully connected layers.
-
-	:param prev_layer: previous layer
-	:param weights: weights for this layer
-	:param bias: bias for this layer
-	:param non_linearity: activation function
-	:param fc_layer: fc layer name to be used in tensorflow graph
-	:param act_layer: activation name to be used in tensorflow graph
-	:rtype: fully connected layer
-	"""
-
-	out = tf.compat.v1.nn.bias_add(tf.matmul(prev_layer, weights), bias, name=fc_layer)
-	if non_linearity == 'relu':
-		act = tf.compat.v1.nn.relu(out, name=act_layer)
-		return act
-	elif non_linearity == 'none':
-		return out
-	else:
-		raise Exception('Wrong function for non-linearity')
 
 def update_target_network(sess, source_network, target_network):
 	"""
@@ -187,29 +108,6 @@ class DQN:
 			q_values = fc_layer(fc1, self.w4, self.b4, 'none', 'q_values')
 			return q_values
 
-class Pong:
-
-	def __init__(self):
-		self.env = gym.make('Pong-v0')
-		self.action_mapping = {'up': 2, 'down': 3}
-
-	def reset(self):
-		return self.env.reset()
-
-	def show(self):
-		self.env.render()
-
-	def close(self):
-		self.env.close()
-		self.env = None
-
-	def play(self, action):
-		next_state, reward, is_done, _ = self.env.step(action)
-		return next_state, reward
-
-	def get_all_actions(self):
-		return self.action_mapping
-
 def train(episodes, max_steps):
 	# It is safe to clear the computation graph because there still could be variables present from the previous run  
 	tf.compat.v1.reset_default_graph()
@@ -275,7 +173,7 @@ def train(episodes, max_steps):
 				# Updating next state
 				next_state = append(preprocess_frame(next_frame), cur_state[:, :, 0:3], axis=2)
 				rewards += reward
-				replay.add_to_memory(cur_state, max_q_index, next_state, reward)
+				replay.add_to_memory((cur_state, max_q_index, next_state, reward))
 				if reward in [-1, 1]:
 					# Skipping some initial frames so that the ball and the opponent paddle come in the view
 					cur_frame = skip_initial_frames(game)
