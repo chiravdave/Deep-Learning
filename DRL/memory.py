@@ -9,7 +9,7 @@ class ReplayBuffer:
 		"""
 		This method will save the given transition into the memory buffer.
 
-		:param save_state: tuple of values needed for training the network
+		:param save_state: tuple of values to store
 		"""
 
 		self.buffer.append(save_state)

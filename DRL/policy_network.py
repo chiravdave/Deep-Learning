@@ -4,9 +4,8 @@ import cv2
 
 from pong import Pong
 from layers import weights_initialize, bias_initialize, conv2D, pool2D, fc_layer
-from numpy.random import uniform, choice
-from numpy import zeros, argmax, stack, append, reshape
-from memory import ReplayBuffer
+from numpy.random import uniform
+from numpy import empty, zeros, stack, append, reshape, mean, std
 from preprocessing import preprocess_frame, show_img
 from tqdm import tqdm
 
@@ -25,20 +24,20 @@ def skip_initial_frames(game):
 
 	return preprocess_frame(next_frame)
 
-def test_model(sess, X, current_q_values, game):
+def test_model(sess, X, policy, game):
 	"""
 	This function will test our trained model. It will create a video for one round (13 points) of the game.
 
 	:param sess: session object
 	:param X: input placeholder
-	:param current_q_values: variable responsible for getting the Q-values from the current network
+	:param current_q_values: policy from the network
 	:param game: pong game object
 	"""
 
 	# four character code object for video writer
 	ex = cv2.VideoWriter_fourcc('M','J','P','G')
 	# video writer object
-	out = cv2.VideoWriter("./test/test_{}.avi".format(time.ctime()), ex, 5.0, (160, 210))
+	out = cv2.VideoWriter("./test/pg_agent_{}.avi".format(time.ctime()), ex, 5.0, (160, 210))
 	
 	model_point, computer_point = 0, 0
 	cur_frame = skip_initial_frames(game)
@@ -48,9 +47,8 @@ def test_model(sess, X, current_q_values, game):
 
 	# Game begins
 	while model_point < 13 and computer_point < 13:
-		q_values = sess.run(current_q_values, feed_dict = {X : reshape(cur_state, (1, 80, 80, 4))})
-		max_q_index = argmax(q_values)
-		action = 2 if max_q_index == 0 else 3
+		cur_policy = sess.run(policy, feed_dict = {X : reshape(cur_state, (1, 80, 80, 4))})
+		action = 2 if cur_policy >= 0.5 else 3
 		next_frame, reward = game.play(action)
 		# write frame to video writer
 		out.write(next_frame)
@@ -66,6 +64,21 @@ def test_model(sess, X, current_q_values, game):
 			cur_state = append(preprocess_frame(next_frame), cur_state[:, :, 0:3], axis=2)
 
 	out.release()
+
+def get_discounted_rewards(rewards, discount):
+	n_samples = len(rewards)
+	discounted_rewards = zeros((n_samples, 1))
+	running_reward = 0
+	for end in range(n_samples-1, -1, -1):
+		if rewards[end] != 0:
+			running_reward = 0
+		running_reward = running_reward * discount + rewards[end] 
+		discounted_rewards[end][0] = running_reward
+
+	# Normalizing discounted rewards (helps in controlling gradient variance)
+	discounted_rewards -= mean(discounted_rewards)
+	discounted_rewards /= std(discounted_rewards)
+	return discounted_rewards
 
 class PGAgent:
 
@@ -95,7 +108,7 @@ class PGAgent:
 			policy = fc_layer(fc1, self.w4, self.b4, 'sigmoid', 'policy')
 			return policy
 
-def train(episodes, max_steps):
+def train(episodes):
 	# It is safe to clear the computation graph because there still could be variables present from the previous run  
 	tf.compat.v1.reset_default_graph()
 	# Creating summary object
@@ -103,7 +116,6 @@ def train(episodes, max_steps):
 
 	# Hyper-parameters
 	learning = 0.0001
-	iterations = 100
 	batch_size = 32
 	discount = 0.9
 
@@ -114,14 +126,12 @@ def train(episodes, max_steps):
 
 	# For showing rewards earned after every 10 episodes in tensorboard
 	tf.compat.v1.summary.scalar('Rewards', reward_history, family='Rewards')
-	# Initializing memory buffer
-	replay = ReplayBuffer()
 
 	# Initializing policy gradient model
 	policy_network = PGAgent('Policy_Network')
 	policy = policy_network.forward(X, 'Policy_Network')
 	# Loss function and optimizer initialization
-	loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=policy, labels=Y, name='loss')
+	loss = tf.reduce_mean(tf.compat.v1.squared_difference(Y, policy))
 	optimizer = tf.train.AdamOptimizer(learning_rate=learning, name='adam')
 	minimize_loss = optimizer.minimize(loss)
 	summary = tf.compat.v1.summary.merge_all()
@@ -129,29 +139,76 @@ def train(episodes, max_steps):
 	with tf.compat.v1.Session() as sess:
 		# First we have to initialize all the variables present in our computational graph
 		sess.run(tf.compat.v1.global_variables_initializer())
+		# Object for model saving
+		saver = tf.compat.v1.train.Saver()
+		# For visualizing graph on tensorboard
+		writer.add_graph(sess.graph)
 		game = Pong()
-		while episode <= episodes:
-			game_point = 0
-			cur_state = preprocess_frame(game.reset())
-			prev_state = None
-			while game_point < max_game_points:
-				game.show()
-				x = cur_state - prev_state if prev_state else np.zeros(80*80)
-				prev_state = np.copy(x)
-				if uniform() < epsilon:
-					action = randint(low=2, high=4)
-				else:
-					policy = sess.run(cur_policy, feed_dict = {X : x.reshape(-1, 1600)})
-					action = 2 if policy >= 0.5 else 3
-				next_state, reward, end = game.play(action)
-				pass
-				replay.add_to_memory(x, action, next_state, reward, end)
-				if end == 1:
-					time += 1
 
-			# Training
+		# Training begins
+		for episode in tqdm(range(1, episodes+1)):
+			n_samples, total_rewards = 0, 0
+			# Initializing memory buffer rewards
+			rewards = []
+			# Skipping some initial frames so that the ball and the opponent paddle come in the view
+			cur_frame = skip_initial_frames(game)
+			# Stacking 4 frames to capture motion
+			cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+			cur_state = reshape(cur_state, (80, 80, 4))
+			xs = empty((batch_size, 80, 80, 4))
+			ys = zeros((batch_size, 1))
+			while n_samples < batch_size:
+				cur_policy = sess.run(policy, feed_dict = {X : reshape(cur_state, (1, 80, 80, 4))})
+				# Deciding if exploration/exploitation should be performed
+				if uniform() < cur_policy:
+					action = 2
+					ys[n_samples][0] = 1 - cur_policy
+				else:
+					action = 3
+					ys[n_samples][0] = cur_policy * -1
+
+				# Performing action in the game
+				next_frame, reward = game.play(action)
+				# Updating next state
+				next_state = append(preprocess_frame(next_frame), cur_state[:, :, 0:3], axis=2)
+				total_rewards += reward
+				xs[n_samples] = cur_state
+				rewards.append(reward)
+				if reward != 0:
+					# Skipping some initial frames so that the ball and the opponent paddle come in the view
+					cur_frame = skip_initial_frames(game)
+					# Stacking 4 frames to capture motion
+					cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+					cur_state = reshape(cur_state, (80, 80, 4))
+				else:
+					cur_state = next_state
+
+				n_samples += 1
+
+			# Adjusting error with the Advantage function
+			discounted_rewards = get_discounted_rewards(rewards, discount)
+			ys *= discounted_rewards
+
+			# Minimizing loss / Performing Q-learning
+			cur_loss = sess.run(minimize_loss, feed_dict = {X: xs, Y: ys})
+			print("Loss after {} episode is: {}".format(episode, total_rewards))
+
+			# Will test our model after every 100 episodes
+			if episode%100 == 0:
+				test_model(sess, X, policy, game)
+
+			# Will see the rewards earned after every 10 episode
+			if episode%10 == 0:
+				print('Reward earned after {} episode is: {}'.format(episode, total_rewards))
+				summ = sess.run(summary, feed_dict={reward_history: total_rewards})
+				writer.add_summary(summ, episode)
+
+			# Saving model after every 500 episodes
+			if episode%500 == 0:
+				saver.save(sess, './model/pg_agent', global_step=episode)
+				batch_size *= 2
+
+		game.close()
 
 if __name__ == '__main__':
-	train(10, 10)
-"""
-In progress...
+	train(1)

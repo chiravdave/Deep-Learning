@@ -174,7 +174,7 @@ def train(episodes, max_steps):
 				next_state = append(preprocess_frame(next_frame), cur_state[:, :, 0:3], axis=2)
 				rewards += reward
 				replay.add_to_memory((cur_state, max_q_index, next_state, reward))
-				if reward in [-1, 1]:
+				if reward != 0:
 					# Skipping some initial frames so that the ball and the opponent paddle come in the view
 					cur_frame = skip_initial_frames(game)
 					# Stacking 4 frames to capture motion
@@ -187,8 +187,8 @@ def train(episodes, max_steps):
 
 			# Will train our current model after we generate labels using the target network
 			for i in range(iterations):
-				y = zeros((batch_size, 2))
-				x = zeros((batch_size, 80, 80, 4))
+				ys = zeros((batch_size, 2))
+				xs = zeros((batch_size, 80, 80, 4))
 				for index, composed_state in enumerate(replay.batch(batch_size)):
 					cur_state, action, next_state, reward = composed_state
 					# Getting Q-values from the current network for current state
@@ -200,11 +200,11 @@ def train(episodes, max_steps):
 					else:
 						cur_q_labels[0, action] = reward + discount * target_q_labels[0, argmax(target_q_labels)]
 
-					x[index] = cur_state
-					y[index] = cur_q_labels
+					xs[index] = cur_state
+					ys[index] = cur_q_labels
 
 				# Minimizing loss / Performing Q-learning
-				loss = sess.run(minimize_loss, feed_dict = {X: x, Y: y})
+				sess.run(minimize_loss, feed_dict = {X: xs, Y: ys})
 
 			# Clearing memory buffer for next episode
 			replay.clear()
