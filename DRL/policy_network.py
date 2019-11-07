@@ -5,8 +5,8 @@ import cv2
 from pong import Pong
 from layers import weights_initialize, bias_initialize, conv2D, pool2D, fc_layer
 from numpy.random import uniform
-from numpy import empty, zeros, stack, append, reshape, mean, std
-from preprocessing import preprocess_frame, show_img
+from numpy import zeros, stack, append, reshape
+from preprocessing import preprocess_frame
 from tqdm import tqdm
 
 def skip_initial_frames(game):
@@ -14,7 +14,7 @@ def skip_initial_frames(game):
 	This function will skip some initial frames so that the ball and the opponent paddle comes in the view.
 
 	:param game: pong game object
-	:rtype: processed frame which will be used as the starting frame to train our DQN
+	:rtype: processed frame which will be used as the starting frame to train our PG Agent
 	"""
 
 	game.reset()
@@ -30,7 +30,7 @@ def test_model(sess, X, policy, game):
 
 	:param sess: session object
 	:param X: input placeholder
-	:param current_q_values: policy from the network
+	:param policy: policy from the network
 	:param game: pong game object
 	"""
 
@@ -42,42 +42,45 @@ def test_model(sess, X, policy, game):
 	model_point, computer_point = 0, 0
 	cur_frame = skip_initial_frames(game)
 	# Stacking 4 frames to capture motion
-	cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+	cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=3)
 	cur_state = reshape(cur_state, (80, 80, 4))
 
 	# Game begins
 	while model_point < 13 and computer_point < 13:
 		cur_policy = sess.run(policy, feed_dict = {X : reshape(cur_state, (1, 80, 80, 4))})
-		action = 2 if cur_policy >= 0.5 else 3
+		action = 2 if cur_policy[0][0] >= 0.5 else 3
 		next_frame, reward = game.play(action)
 		# write frame to video writer
 		out.write(next_frame)
-		if reward == 1 or reward == -1:
+		if reward != 0:
 			if reward == -1:
 				computer_point += 1
 			else:
 				model_point += 1
 			cur_frame = skip_initial_frames(game)
-			cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+			cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=3)
 			cur_state = reshape(cur_state, (80, 80, 4))
 		else:
 			cur_state = append(preprocess_frame(next_frame), cur_state[:, :, 0:3], axis=2)
 
 	out.release()
 
-def get_discounted_rewards(rewards, discount):
+def get_discounted_rewards(labels, rewards, discount):
 	n_samples = len(rewards)
 	discounted_rewards = zeros((n_samples, 1))
 	running_reward = 0
 	for end in range(n_samples-1, -1, -1):
 		if rewards[end] != 0:
 			running_reward = 0
-		running_reward = running_reward * discount + rewards[end] 
-		discounted_rewards[end][0] = running_reward
 
-	# Normalizing discounted rewards (helps in controlling gradient variance)
-	discounted_rewards -= mean(discounted_rewards)
-	discounted_rewards /= std(discounted_rewards)
+		running_reward = running_reward * discount + rewards[end] 
+		discounted_rewards[end][0] = abs(running_reward)
+		
+		# Checking if the action taken was bad
+		if running_reward < 0:
+			# Flipping labels
+			labels[end][0] = 1 - labels[end][0]
+
 	return discounted_rewards
 
 class PGAgent:
@@ -116,12 +119,13 @@ def train(episodes):
 
 	# Hyper-parameters
 	learning = 0.0001
-	batch_size = 32
+	batch_size = 128
 	discount = 0.9
 
-	# Placeholder for input, output and rewards
+	# Placeholder for inputs, outputs, rewards and gradient weights
 	X = tf.compat.v1.placeholder(shape=(None, 80, 80, 4), dtype=tf.float32)
 	Y = tf.compat.v1.placeholder(shape=(None, 1), dtype=tf.float32)
+	gradient_weights = tf.compat.v1.placeholder(shape=(None, 1), dtype=tf.float32)
 	reward_history = tf.compat.v1.placeholder(shape=(), dtype=tf.int32)
 
 	# For showing rewards earned after every 10 episodes in tensorboard
@@ -131,7 +135,7 @@ def train(episodes):
 	policy_network = PGAgent('Policy_Network')
 	policy = policy_network.forward(X, 'Policy_Network')
 	# Loss function and optimizer initialization
-	loss = tf.reduce_mean(tf.compat.v1.squared_difference(Y, policy))
+	loss = tf.reduce_mean(tf.compat.v1.losses.log_loss(Y, policy, weights=gradient_weights))
 	optimizer = tf.train.AdamOptimizer(learning_rate=learning, name='adam')
 	minimize_loss = optimizer.minimize(loss)
 	summary = tf.compat.v1.summary.merge_all()
@@ -148,27 +152,29 @@ def train(episodes):
 		# Training begins
 		for episode in tqdm(range(1, episodes+1)):
 			n_samples, total_rewards = 0, 0
-			# Initializing memory buffer rewards
+			# Initializing memory buffer for rewards
 			rewards = []
 			# Skipping some initial frames so that the ball and the opponent paddle come in the view
 			cur_frame = skip_initial_frames(game)
 			# Stacking 4 frames to capture motion
-			cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+			cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=3)
 			cur_state = reshape(cur_state, (80, 80, 4))
-			xs = empty((batch_size, 80, 80, 4))
+			xs = zeros((batch_size, 80, 80, 4))
 			ys = zeros((batch_size, 1))
 			while n_samples < batch_size:
 				cur_policy = sess.run(policy, feed_dict = {X : reshape(cur_state, (1, 80, 80, 4))})
 				# Deciding if exploration/exploitation should be performed
-				if uniform() < cur_policy:
+				if uniform() < cur_policy[0][0]:
 					action = 2
-					ys[n_samples][0] = 1 - cur_policy
+					ys[n_samples][0] = 1
+
 				else:
 					action = 3
-					ys[n_samples][0] = cur_policy * -1
+					ys[n_samples][0] = 0
 
 				# Performing action in the game
 				next_frame, reward = game.play(action)
+				# print(cur_policy, reward)
 				# Updating next state
 				next_state = append(preprocess_frame(next_frame), cur_state[:, :, 0:3], axis=2)
 				total_rewards += reward
@@ -178,7 +184,7 @@ def train(episodes):
 					# Skipping some initial frames so that the ball and the opponent paddle come in the view
 					cur_frame = skip_initial_frames(game)
 					# Stacking 4 frames to capture motion
-					cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+					cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=3)
 					cur_state = reshape(cur_state, (80, 80, 4))
 				else:
 					cur_state = next_state
@@ -186,15 +192,13 @@ def train(episodes):
 				n_samples += 1
 
 			# Adjusting error with the Advantage function
-			discounted_rewards = get_discounted_rewards(rewards, discount)
-			ys *= discounted_rewards
+			discounted_rewards = get_discounted_rewards(ys, rewards, discount)
 
-			# Minimizing loss / Performing Q-learning
-			cur_loss = sess.run(minimize_loss, feed_dict = {X: xs, Y: ys})
-			print("Loss after {} episode is: {}".format(episode, total_rewards))
+			# Minimizing loss
+			sess.run(minimize_loss, feed_dict = {X: xs, Y: ys, gradient_weights: discounted_rewards})
 
 			# Will test our model after every 100 episodes
-			if episode%100 == 0:
+			if episode%2500 == 0:
 				test_model(sess, X, policy, game)
 
 			# Will see the rewards earned after every 10 episode
@@ -204,11 +208,11 @@ def train(episodes):
 				writer.add_summary(summ, episode)
 
 			# Saving model after every 500 episodes
-			if episode%500 == 0:
+			if episode%10000 == 0:
 				saver.save(sess, './model/pg_agent', global_step=episode)
 				batch_size *= 2
 
 		game.close()
 
 if __name__ == '__main__':
-	train(1)
+	train(30000)

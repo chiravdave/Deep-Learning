@@ -5,9 +5,9 @@ import cv2
 from pong import Pong
 from layers import weights_initialize, bias_initialize, conv2D, pool2D, fc_layer
 from numpy.random import uniform, choice
-from numpy import zeros, argmax, stack, append, reshape
+from numpy import zeros, argmax, max, stack, append, reshape
 from memory import ReplayBuffer
-from preprocessing import preprocess_frame, show_img
+from preprocessing import preprocess_frame
 from tqdm import tqdm
 
 def update_target_network(sess, source_network, target_network):
@@ -55,24 +55,24 @@ def test_model(sess, X, current_q_values, game):
 	model_point, computer_point = 0, 0
 	cur_frame = skip_initial_frames(game)
 	# Stacking 4 frames to capture motion
-	cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+	cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=3)
 	cur_state = reshape(cur_state, (80, 80, 4))
 
 	# Game begins
 	while model_point < 13 and computer_point < 13:
 		q_values = sess.run(current_q_values, feed_dict = {X : reshape(cur_state, (1, 80, 80, 4))})
-		max_q_index = argmax(q_values)
+		max_q_index = argmax(q_values[0])
 		action = 2 if max_q_index == 0 else 3
 		next_frame, reward = game.play(action)
 		# write frame to video writer
 		out.write(next_frame)
-		if reward == 1 or reward == -1:
+		if reward != 0:
 			if reward == -1:
 				computer_point += 1
 			else:
 				model_point += 1
 			cur_frame = skip_initial_frames(game)
-			cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+			cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=3)
 			cur_state = reshape(cur_state, (80, 80, 4))
 		else:
 			cur_state = append(preprocess_frame(next_frame), cur_state[:, :, 0:3], axis=2)
@@ -156,7 +156,7 @@ def train(episodes, max_steps):
 			# Skipping some initial frames so that the ball and the opponent paddle come in the view
 			cur_frame = skip_initial_frames(game)
 			# Stacking 4 frames to capture motion
-			cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+			cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=3)
 			cur_state = reshape(cur_state, (80, 80, 4))
 			while step <= max_steps:
 				# Deciding if exploration/exploitation should be performed
@@ -165,7 +165,7 @@ def train(episodes, max_steps):
 					max_q_index = 0 if action == 2 else 1
 				else:
 					q_values = sess.run(current_q_values, feed_dict = {X : reshape(cur_state, (1, 80, 80, 4))})
-					max_q_index = argmax(q_values)
+					max_q_index = argmax(q_values[0])
 					action = 2 if max_q_index == 0 else 3
 
 				# Performing action in the game
@@ -178,7 +178,7 @@ def train(episodes, max_steps):
 					# Skipping some initial frames so that the ball and the opponent paddle come in the view
 					cur_frame = skip_initial_frames(game)
 					# Stacking 4 frames to capture motion
-					cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=2)
+					cur_state = stack((cur_frame, cur_frame, cur_frame, cur_frame), axis=3)
 					cur_state = reshape(cur_state, (80, 80, 4))
 				else:
 					cur_state = next_state
@@ -193,12 +193,12 @@ def train(episodes, max_steps):
 					cur_state, action, next_state, reward = composed_state
 					# Getting Q-values from the current network for current state
 					cur_q_labels = sess.run(current_q_values, feed_dict = {X : reshape(cur_state, (1, 80, 80, 4))})
-					# Getting Q-values from the target network for next state
+					# Getting maximum Q-value from the target network for next state
 					target_q_labels = sess.run(target_q_values, feed_dict = {X : reshape(next_state, (1, 80, 80, 4))})
-					if reward in [-1, 1]:
+					if reward != 0:
 						cur_q_labels[0, action] = reward
 					else:
-						cur_q_labels[0, action] = reward + discount * target_q_labels[0, argmax(target_q_labels)]
+						cur_q_labels[0, action] = reward + discount * max(target_q_labels)
 
 					xs[index] = cur_state
 					ys[index] = cur_q_labels

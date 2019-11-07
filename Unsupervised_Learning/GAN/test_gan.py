@@ -1,25 +1,7 @@
 import tensorflow as tf
-import matplotlib.pyplot as plt
 import numpy as np
 
-def gen_noise(batch_size):
-	'''
-	This function will generate samples from a uniform distribution 
-	'''
-	noise = np.random.uniform(-1, 1, size=(batch_size, 128))
-	return noise
-
-def show_generated_images(generated_images):
-		'''
-		This method will show 3 images in a single row, so n_images should be divisible by 3
-		'''
-
-		n_images = len(generated_images)
-		rows = int(n_images/3)
-		for image_no in range(1, n_images+1):
-		  plt.subplot(rows, 3, image_no)
-		  plt.imshow((np.reshape(generated_images[image_no-1], (28, 28))*127.5 + 127.5), cmap='gray')
-		plt.show()
+from util import gen_noise, show_generated_images
 
 def test_gan():
 	tf.reset_default_graph()
