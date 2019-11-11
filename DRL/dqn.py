@@ -22,21 +22,6 @@ def update_target_network(sess, source_network, target_network):
 	for key, tensor in source_network.tensors.items():
 		sess.run(target_network.tensors[key].assign(tensor))
 
-def skip_initial_frames(game):
-	"""
-	This function will skip some initial frames so that the ball and the opponent paddle comes in the view.
-
-	:param game: pong game object
-	:rtype: processed frame which will be used as the starting frame to train our DQN
-	"""
-
-	game.reset()
-	next_frame = None
-	for i in range(20):
-		next_frame, reward = game.play(0)
-
-	return preprocess_frame(next_frame)
-
 def test_model(sess, X, current_q_values, game):
 	"""
 	This function will test our trained model. It will create a video for one round (13 points) of the game.

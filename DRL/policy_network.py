@@ -6,23 +6,8 @@ from pong import Pong
 from layers import weights_initialize, bias_initialize, conv2D, pool2D, fc_layer
 from numpy.random import uniform
 from numpy import zeros, stack, append, reshape
-from preprocessing import preprocess_frame
+from preprocessing import preprocess_frame, skip_initial_frames
 from tqdm import tqdm
-
-def skip_initial_frames(game):
-	"""
-	This function will skip some initial frames so that the ball and the opponent paddle comes in the view.
-
-	:param game: pong game object
-	:rtype: processed frame which will be used as the starting frame to train our PG Agent
-	"""
-
-	game.reset()
-	next_frame = None
-	for i in range(20):
-		next_frame, reward = game.play(0)
-
-	return preprocess_frame(next_frame)
 
 def test_model(sess, X, policy, game):
 	"""
@@ -116,11 +101,11 @@ def train(episodes):
 	tf.compat.v1.reset_default_graph()
 	# Creating summary object
 	writer = tf.compat.v1.summary.FileWriter('./graph/')
-
+	
 	# Hyper-parameters
 	learning = 0.0001
-	batch_size = 128
-	discount = 0.9
+	batch_size = 256
+	discount = 0.65
 
 	# Placeholder for inputs, outputs, rewards and gradient weights
 	X = tf.compat.v1.placeholder(shape=(None, 80, 80, 4), dtype=tf.float32)
@@ -198,21 +183,22 @@ def train(episodes):
 			sess.run(minimize_loss, feed_dict = {X: xs, Y: ys, gradient_weights: discounted_rewards})
 
 			# Will test our model after every 100 episodes
-			if episode%2500 == 0:
+			if episode%5000 == 0:
 				test_model(sess, X, policy, game)
 
 			# Will see the rewards earned after every 10 episode
-			if episode%10 == 0:
+			if episode%500 == 0:
 				print('Reward earned after {} episode is: {}'.format(episode, total_rewards))
 				summ = sess.run(summary, feed_dict={reward_history: total_rewards})
 				writer.add_summary(summ, episode)
 
 			# Saving model after every 500 episodes
-			if episode%10000 == 0:
+			if episode%30000 == 0:
 				saver.save(sess, './model/pg_agent', global_step=episode)
-				batch_size *= 2
+				if batch_size < 2048:
+					batch_size *= 2
 
 		game.close()
 
 if __name__ == '__main__':
-	train(30000)
+	train(200000)
