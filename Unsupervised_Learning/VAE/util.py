@@ -9,7 +9,7 @@ def gen_noise(batch_size):
 	:rtype: random noise sampled from a uniform distribution 
 	'''
 
-	noise = np.random.uniform(-1, 1, size=(batch_size, 128))
+	noise = np.random.normal(size=(batch_size, 10))
 	return noise
 
 def show_generated_images(generated_images):
@@ -36,4 +36,4 @@ def save_generated_images(generated_images, epoch):
 
 	n_images = len(generated_images)
 	for image_no in range(1, n_images+1):
-		plt.imsave('./images/{}_{}'.format(epoch, image_no), (np.reshape(generated_images[image_no-1], (28, 28))*127.5 + 127.5), format='png', cmap='gray')
+		plt.imsave('./images/{}_{}'.format(epoch, image_no), (np.reshape(generated_images[image_no-1], (28, 28))), format='png', cmap='gray')

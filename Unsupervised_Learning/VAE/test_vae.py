@@ -6,7 +6,7 @@ from util import gen_noise, show_generated_images
 def test_gan():
 	tf.reset_default_graph()
 	with tf.Session() as sess:
-		saver = tf.train.import_meta_graph('./model/gan_model-1000.meta')
+		saver = tf.train.import_meta_graph('./model/vae-1000.meta')
 		saver.restore(sess, tf.train.latest_checkpoint('./model/'))
 		graph = tf.get_default_graph()
 		while True:

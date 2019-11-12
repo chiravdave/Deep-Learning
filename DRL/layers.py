@@ -2,7 +2,7 @@ import tensorflow as tf
 
 xavier_initializer = tf.glorot_normal_initializer()
 
-def weights_initialize(shape, var_name):
+def weights_initialize(shape, var_name="w"):
 	"""
 	This function will help to initialize our weights.
 
@@ -14,7 +14,7 @@ def weights_initialize(shape, var_name):
 	w = tf.Variable(xavier_initializer(shape=shape, dtype=tf.float32), name=var_name, shape=shape, dtype=tf.float32)
 	return w
 
-def bias_initialize(shape, var_name):
+def bias_initialize(shape, var_name="b"):
 	"""
 	This function will help to initialize our bias.
 
@@ -26,7 +26,7 @@ def bias_initialize(shape, var_name):
 	b = tf.Variable(tf.zeros(shape=shape, dtype=tf.float32), name=var_name, shape=shape, dtype=tf.float32)
 	return b
 
-def conv2D(prev_layer, kernel, stride, pad, bias, conv_layer, act_layer):
+def conv2D(prev_layer, kernel, stride, pad, bias, conv_layer="conv_layer", act_layer="act"):
 	"""
 	This function will help to initialize our convolutional layers.
 
@@ -44,7 +44,7 @@ def conv2D(prev_layer, kernel, stride, pad, bias, conv_layer, act_layer):
 	act = tf.compat.v1.nn.relu(conv, name=act_layer)
 	return act
 
-def pool2D(prev_layer, k_size, stride, pad, pool_layer):
+def pool2D(prev_layer, k_size, stride, pad, pool_layer="pool_layer"):
 	"""
 	This function will help to initialize our pooling layers.
 
@@ -59,7 +59,7 @@ def pool2D(prev_layer, k_size, stride, pad, pool_layer):
 	pool = tf.compat.v1.nn.max_pool2d(prev_layer, k_size, stride, pad, name=pool_layer)
 	return pool 
 
-def fc_layer(prev_layer, weights, bias, non_linearity, fc_layer, act_layer=None):
+def fc_layer(prev_layer, weights, bias, non_linearity, fc_layer="fc_layer", act_layer="act"):
 	"""
 	This function will help to initialize our fully connected layers.
 

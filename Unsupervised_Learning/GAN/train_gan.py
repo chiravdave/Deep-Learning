@@ -106,7 +106,8 @@ def train(epochs):
 
 		# First we have to initialize all the variables present in our computational graph
 		sess.run(tf.compat.v1.global_variables_initializer())
-
+		# For visualizing graph on tensorboard
+		writer.add_graph(sess.graph)
 		# Object for model saving
 		saver = tf.compat.v1.train.Saver()
 
@@ -114,9 +115,9 @@ def train(epochs):
 		for epoch in tqdm(range(1, epochs+1)):
 			np.random.shuffle(x)
 			# For one epoch with batch size as 128, we would need 546 iterations (546*128 = 69888)
-			for iter in range(500):
+			for iteration in range(500):
 				# Training the Discriminator alone
-				real_images = x[128*iter:128*(iter+1)]
+				real_images = x[128*iteration:128*(iteration+1)]
 				# Getting next batch of samples from the normal (gaussian) distribution
 				noise = gen_noise(128)
 				_ = sess.run(D_optimizer, feed_dict = {X : real_images, Z : noise})
@@ -142,9 +143,6 @@ def train(epochs):
 			# Saving model after every 1 epoch
 			if epoch%500 == 0:
 				saver.save(sess, './model/gan_model', global_step=epoch)
-
-		# For visualizing graph on tensorboard
-		writer.add_graph(sess.graph)
 
 if __name__ == '__main__':
 	train(1000)
