@@ -111,7 +111,7 @@ def train(epochs):
 			summ = sess.run(summary, feed_dict={X: next_batch})
 			writer.add_summary(summ, epoch)
 
-			if epoch%50 == 0:
+			if epoch%300 == 0:
 				# Will test our VAE by producing 9 images
 				noise = gen_noise(9)
 				# Running the VAE network
@@ -121,8 +121,8 @@ def train(epochs):
 				save_generated_images(generated_images, epoch)
 			
 			# Saving model after every 1 epoch
-			if epoch%500 == 0:
+			if epoch%2500 == 0:
 				saver.save(sess, './model/vae', global_step=epoch)
 
 if __name__ == '__main__':
-	train(1000)
+	train(5000)

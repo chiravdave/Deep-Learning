@@ -1,7 +1,7 @@
 # VAE
-This repository includes a tensorflow implementation of VAE on mnist dataset with the netwrok been trained only for 1000 epochs. If you want your model to be really good then you should run it for more epochs. Model weights can be found at (In progress..)
+This repository includes a tensorflow implementation of VAE on mnist dataset with the netwrok been trained only for 4000 epochs. If you want your model to be really good then you should go for a bigger network and run it for more epochs. Model weights can be found at (https://drive.google.com/open?id=1Nis3NerxTnh1pjHqhxe0qvTyx39kOClq)
 
-* Epochs : 1000
+* Epochs : 4000
 * Learning rate: 0.0003
 * Batch size: 128
 * Learning Rate : 0.001
