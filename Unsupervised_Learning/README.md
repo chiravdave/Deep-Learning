@@ -2,4 +2,5 @@
 
 * Auto Encoders
 * GAN
+* DCGAN
 * VAE
