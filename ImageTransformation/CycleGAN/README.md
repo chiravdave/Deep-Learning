@@ -7,4 +7,4 @@ This repository includes a tensorflow implementation of CycleGAN. In this tutori
 * Lambda for L1 loss = 100
 
 # Results
-![Results](./1.png)
+![Results](./results.gif)
