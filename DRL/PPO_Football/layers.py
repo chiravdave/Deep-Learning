@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-xavier_initializer = tf.glorot_normal_initializer()
+xavier_initializer = tf.keras.initializers.GlorotNormal()
 
 def weights_initialize(shape, var_name="w"):
 	"""
@@ -11,8 +11,7 @@ def weights_initialize(shape, var_name="w"):
 	:rtype: weight matrix
 	"""
 
-	w = tf.Variable(xavier_initializer(shape=shape, dtype=tf.float32), name=var_name, shape=shape, dtype=tf.float32)
-	return w
+	return tf.Variable(xavier_initializer(shape=shape, dtype=tf.float32), name=var_name, shape=shape, dtype=tf.float32)
 
 def bias_initialize(shape, var_name="b"):
 	"""
@@ -23,8 +22,7 @@ def bias_initialize(shape, var_name="b"):
 	:rtype: bias
 	"""
 
-	b = tf.Variable(tf.zeros(shape=shape, dtype=tf.float32), name=var_name, shape=shape, dtype=tf.float32)
-	return b
+	return tf.Variable(tf.zeros(shape=shape, dtype=tf.float32), name=var_name, shape=shape, dtype=tf.float32)
 
 def conv2D(prev_layer, kernel, stride, pad, bias, conv_layer="conv_layer", act_layer="act"):
 	"""
@@ -41,8 +39,7 @@ def conv2D(prev_layer, kernel, stride, pad, bias, conv_layer="conv_layer", act_l
 	"""
 
 	conv = tf.compat.v1.nn.bias_add(tf.compat.v1.nn.conv2d(prev_layer, filter=kernel, strides=stride, padding=pad), bias, name=conv_layer)
-	act = tf.compat.v1.nn.relu(conv, name=act_layer)
-	return act
+	return tf.compat.v1.nn.relu(conv, name=act_layer)
 
 def pool2D(prev_layer, k_size, stride, pad, pool_layer="pool_layer"):
 	"""
@@ -56,8 +53,7 @@ def pool2D(prev_layer, k_size, stride, pad, pool_layer="pool_layer"):
 	:rtype: pooling layer
 	"""
 
-	pool = tf.compat.v1.nn.max_pool2d(prev_layer, k_size, stride, pad, name=pool_layer)
-	return pool 
+	return tf.compat.v1.nn.max_pool2d(prev_layer, k_size, stride, pad, name=pool_layer) 
 
 def fc_layer(prev_layer, weights, bias, non_linearity, fc_layer="fc_layer", act_layer="act"):
 	"""
@@ -74,12 +70,13 @@ def fc_layer(prev_layer, weights, bias, non_linearity, fc_layer="fc_layer", act_
 
 	out = tf.compat.v1.nn.bias_add(tf.matmul(prev_layer, weights), bias, name=fc_layer)
 	if non_linearity == "relu":
-		act = tf.compat.v1.nn.relu(out, name=act_layer)
-		return act
+		return tf.compat.v1.nn.relu(out, name=act_layer)
 
 	elif non_linearity == "sigmoid":
-		act = tf.compat.v1.nn.sigmoid(out, name=act_layer)
-		return act
+		return tf.compat.v1.nn.sigmoid(out, name=act_layer)
+
+	elif non_linearity == "tanh":
+		return tf.math.tanh(out, name=act_layer)
 	
 	elif non_linearity == "none":
 		return out
