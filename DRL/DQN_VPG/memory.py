@@ -27,7 +27,7 @@ class ReplayBuffer:
 		This method will return a batch of transitions randomly selected from the memory buffer.
 		"""
 
-		batch_indexes = choice(len(self.reward)-1, size=batch_size, replace=False)
+		batch_indexes = choice(len(self.rewards)-1, size=batch_size, replace=False)
 		batch_states = array([self.states[index] for index in batch_indexes], dtype=float32)
 		batch_actions_taken = array([self.actions_taken[index] for index in batch_indexes], dtype=int32)
 		batch_correct_q_values = correct_q_values[batch_indexes]
