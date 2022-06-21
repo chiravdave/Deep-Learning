@@ -1,5 +1,7 @@
 from torch import nn
 
+CKPT_PATH = "model.pt"
+
 
 class Conv2D(nn.Module):
 	def __init__(
@@ -95,6 +97,26 @@ class MobileNetV1(nn.Module):
 
 		return x
 
+	def save_checkpoint(self, epoch, optimizer):
+		torch.save({
+			"epoch": epoch, 
+			"model_state_dict": self.state_dict(), 
+			"optimizer_state_dict": optimizer.state_dict()
+			}, CKPT_PATH)
+
+	def load_checkpoint(self, optimizer):
+		checkpoint = torch.load(CKPT_PATH)
+		self.load_state_dict(checkpoint["model_state_dict"])
+		optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+		self.train()
+
+		return checkpoint["epoch"]
+
+	def load_model_weights(self):
+		checkpoint = torch.load(CKPT_PATH)
+		self.load_state_dict(checkpoint["model_state_dict"])
+		self.eval()
+
 class MobileNetV2(nn.Module):
 	def __init__(self):
 		super(MobileNetV2, self).__init__()
@@ -140,6 +162,26 @@ class MobileNetV2(nn.Module):
 			x = layer(x)
 
 		return x
+
+	def save_checkpoint(self, epoch, optimizer):
+		torch.save({
+			"epoch": epoch, 
+			"model_state_dict": self.state_dict(), 
+			"optimizer_state_dict": optimizer.state_dict()
+			}, CKPT_PATH)
+
+	def load_checkpoint(self, optimizer):
+		checkpoint = torch.load(CKPT_PATH)
+		self.load_state_dict(checkpoint["model_state_dict"])
+		optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+		self.train()
+
+		return checkpoint["epoch"]
+
+	def load_model_weights(self):
+		checkpoint = torch.load(CKPT_PATH)
+		self.load_state_dict(checkpoint["model_state_dict"])
+		self.eval()
 
 if __name__ == "__main__":
 	mobilenetv1 = MobileNetV1()

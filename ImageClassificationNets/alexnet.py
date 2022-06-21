@@ -1,5 +1,7 @@
 from torch import nn
 
+CKPT_PATH = "model.pt"
+
 
 class AlexNet(nn.Module):
 	def __init__(self):
@@ -35,6 +37,26 @@ class AlexNet(nn.Module):
 			x = layer(x)
 
 		return x
+
+	def save_checkpoint(self, epoch, optimizer):
+		torch.save({
+			"epoch": epoch, 
+			"model_state_dict": self.state_dict(), 
+			"optimizer_state_dict": optimizer.state_dict()
+			}, CKPT_PATH)
+
+	def load_checkpoint(self, optimizer):
+		checkpoint = torch.load(CKPT_PATH)
+		self.load_state_dict(checkpoint["model_state_dict"])
+		optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+		self.train()
+
+		return checkpoint["epoch"]
+
+	def load_model_weights(self):
+		checkpoint = torch.load(CKPT_PATH)
+		self.load_state_dict(checkpoint["model_state_dict"])
+		self.eval()
 
 if __name__ == "__main__":
 	alexnet = AlexNet()
